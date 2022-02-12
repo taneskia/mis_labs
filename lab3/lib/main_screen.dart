@@ -1,10 +1,14 @@
 import 'package:date_time_picker/date_time_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:intl/intl.dart';
 import 'package:lab3/calendar_screen.dart';
+import 'package:lab3/location_service.dart';
+import 'package:lab3/map_screen.dart';
 import 'package:lab3/notification_service.dart';
 import 'package:lab3/user_service.dart';
 import 'package:lab3/users_screen.dart';
+import 'package:place_picker/place_picker.dart';
 
 import 'exam.dart';
 
@@ -84,9 +88,11 @@ class _ExamsState extends State<Exams> {
   final _dateController = TextEditingController();
   DateTime? examDateTime;
   String? examName;
+  String? examLocation;
   final void Function(bool enabled) enableButton;
   final UserService _userService = UserService();
   final NotificationService _notificationService = NotificationService();
+  final LocationService _locationService = LocationService();
 
   String userName = "";
   List<Exam> exams = [];
@@ -127,6 +133,12 @@ class _ExamsState extends State<Exams> {
                   onChanged: _dateChanged,
                   controller: _dateController,
                 ),
+                ElevatedButton(
+                  child: const Text("Pick Exam Location"),
+                  onPressed: () {
+                    showPlacePicker();
+                  },
+                ),
               ],
             ),
           ),
@@ -140,26 +152,55 @@ class _ExamsState extends State<Exams> {
                   color: Theme.of(context).secondaryHeaderColor,
                   child: Padding(
                     padding: const EdgeInsets.all(7),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text(
-                          exams[index].name,
-                          style: const TextStyle(
-                              fontSize: 25, fontWeight: FontWeight.bold),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              exams[index].name,
+                              style: const TextStyle(
+                                  fontSize: 25, fontWeight: FontWeight.bold),
+                            ),
+                            Text(
+                              DateFormat("dd MMM yyyy - hh:mm")
+                                  .format(exams[index].dateTime)
+                                  .toString(),
+                              style: const TextStyle(
+                                  fontSize: 20, color: Colors.black54),
+                            )
+                          ],
                         ),
-                        Text(
-                          DateFormat("dd MMM yyyy - hh:mm")
-                              .format(exams[index].dateTime)
-                              .toString(),
-                          style: const TextStyle(
-                              fontSize: 20, color: Colors.black54),
-                        )
+                        IconButton(
+                            onPressed: () {
+                              _navigateToLocation(exams[index].location);
+                            },
+                            icon: const Icon(Icons.directions))
                       ],
                     ),
                   ),
                 );
               }),
+        ),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 10),
+          child: ElevatedButton(
+            style: ButtonStyle(
+              fixedSize:
+                  MaterialStateProperty.all<Size>(const Size.fromWidth(1000)),
+              shape: MaterialStateProperty.all<RoundedRectangleBorder>(
+                RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10.0),
+                ),
+              ),
+            ),
+            child: const Text(
+              'Show in calendar',
+              style: TextStyle(fontSize: 17),
+            ),
+            onPressed: _navigateToCalendar,
+          ),
         ),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 10),
@@ -173,8 +214,11 @@ class _ExamsState extends State<Exams> {
                 ),
               ),
             ),
-            child: const Text('Show in calendar', style: TextStyle(fontSize: 17),),
-            onPressed: _navigateToCalendar,
+            child: const Text(
+              'Show on map',
+              style: TextStyle(fontSize: 17),
+            ),
+            onPressed: _navigateToMap,
           ),
         ),
       ]),
@@ -182,18 +226,26 @@ class _ExamsState extends State<Exams> {
   }
 
   void _navigateToCalendar() {
-    Navigator.push(
-        context, MaterialPageRoute(builder: (context) => CalendarScreen(exams: exams)));
+    Navigator.push(context,
+        MaterialPageRoute(builder: (context) => CalendarScreen(exams: exams)));
+  }
+
+  void _navigateToMap() async {
+    String location = await _locationService.getCurrentLocation();
+    Navigator.push(context,
+        MaterialPageRoute(builder: (context) => MapScreen(exams: exams, location: location,)));
   }
 
   void addExam() {
-    _userService.addExamForUser(userName, examName!, examDateTime!);
+    _userService.addExamForUser(
+        userName, examName!, examDateTime!, examLocation!);
     _notificationService.scheduleNotification(
         userName, examName!, examDateTime!);
     setState(() {
       exams = _userService.getExamsForUser(userName);
       examName = null;
       examDateTime = null;
+      examLocation = null;
     });
     _textController.clear();
     _dateController.clear();
@@ -204,7 +256,7 @@ class _ExamsState extends State<Exams> {
     setState(() {
       examName = _textController.value.text;
     });
-    if (examName != null && examDateTime != null) {
+    if (examName != null && examDateTime != null && examLocation != null) {
       enableButton(true);
     } else {
       enableButton(false);
@@ -215,10 +267,41 @@ class _ExamsState extends State<Exams> {
     setState(() {
       examDateTime = DateTime.parse(_dateController.value.text);
     });
-    if (examName != null && examDateTime != null) {
+    if (examName != null && examDateTime != null && examLocation != null) {
       enableButton(true);
     } else {
       enableButton(false);
     }
+  }
+
+  void showPlacePicker() async {
+    String initialLocation = await _locationService.getCurrentLocation();
+    LatLng latLng = LatLng(double.parse(initialLocation.split(",")[0]),
+        double.parse(initialLocation.split(",")[1]));
+    LocationResult result = await Navigator.of(context).push(MaterialPageRoute(
+        builder: (context) => PlacePicker(
+            "API_KEY",
+            displayLocation: latLng)));
+
+    // Handle the result in your way
+    if (result.latLng != null &&
+        result.latLng?.latitude != null &&
+        result.latLng?.longitude != null) {
+      String lat = result.latLng?.latitude.toString() ?? "";
+      String lon = result.latLng?.longitude.toString() ?? "";
+      String location = lat + "," + lon;
+      setState(() {
+        examLocation = location;
+      });
+    }
+    if (examName != null && examDateTime != null && examLocation != null) {
+      enableButton(true);
+    } else {
+      enableButton(false);
+    }
+  }
+
+  _navigateToLocation(String location) {
+    _locationService.navigateToDestination(location);
   }
 }

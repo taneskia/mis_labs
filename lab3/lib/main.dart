@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:lab3/location_service.dart';
 import 'package:lab3/main_screen.dart';
 
 void main() {
@@ -13,6 +14,15 @@ class MyApp extends StatefulWidget {
 }
 
 class _MyAppState extends State<MyApp> {
+  final LocationService _locationService = LocationService();
+
+
+  @override
+  void initState() {
+    super.initState();
+    _locationService.startLocationNotifications();
+  }
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(

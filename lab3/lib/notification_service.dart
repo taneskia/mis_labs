@@ -28,11 +28,10 @@ class NotificationService {
     MacOSInitializationSettings initializationSettingsMacOS =
         const MacOSInitializationSettings();
 
-    initializationSettings =
-        InitializationSettings(
-            android: initializationSettingsAndroid,
-            iOS: initializationSettingsIOS,
-            macOS: initializationSettingsMacOS);
+    initializationSettings = InitializationSettings(
+        android: initializationSettingsAndroid,
+        iOS: initializationSettingsIOS,
+        macOS: initializationSettingsMacOS);
 
     flutterLocalNotificationsPlugin.initialize(initializationSettings,
         onSelectNotification: (String? s) async {});
@@ -40,8 +39,8 @@ class NotificationService {
     tz.initializeTimeZones();
   }
 
-
-  void scheduleNotification(String userName, String body, DateTime dateTime) async {
+  void scheduleNotification(
+      String userName, String body, DateTime dateTime) async {
     await flutterLocalNotificationsPlugin.zonedSchedule(
         1,
         'Upcoming exam for $userName',
@@ -49,11 +48,21 @@ class NotificationService {
         // replace with dateTime
         tz.TZDateTime.from(dateTime, tz.local),
         const NotificationDetails(
-            android: AndroidNotificationDetails(
-                '0', 'default',
+            android: AndroidNotificationDetails('0', 'default',
                 channelDescription: 'app notifications')),
         androidAllowWhileIdle: true,
         uiLocalNotificationDateInterpretation:
-        UILocalNotificationDateInterpretation.absoluteTime);
+            UILocalNotificationDateInterpretation.absoluteTime);
+  }
+
+  void showNotification(String title, String body) {
+    flutterLocalNotificationsPlugin.show(
+      2,
+      title,
+      body,
+      const NotificationDetails(
+          android: AndroidNotificationDetails('0', 'default',
+              channelDescription: 'app notifications')),
+    );
   }
 }

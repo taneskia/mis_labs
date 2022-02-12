@@ -37,6 +37,11 @@ dependencies:
   cupertino_icons: ^1.0.2
   flutter_local_notifications: ^9.2.0
   syncfusion_flutter_calendar: ^19.4.41
+  android_intent_plus: ^3.1.0
+  location: ^4.3.0
+  place_picker: ^0.9.20-nullsafety
+  google_maps_flutter: ^2.1.1
+  geolocator: ^8.1.1
 
 dev_dependencies:
   flutter_test:
